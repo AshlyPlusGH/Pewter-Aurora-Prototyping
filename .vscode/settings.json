@@ -60,13 +60,13 @@
         "*.asset": "yaml",
         "*.meta": "yaml",
         "*.prefab": "yaml",
-        "*.unity": "yaml",
+        "*.unity": "yaml"
     },
     "explorer.fileNesting.enabled": true,
     "explorer.fileNesting.patterns": {
         "*.sln": "*.csproj",
         "*.slnx": "*.csproj"
     },
-    "dotnet.defaultSolution": "Pewter Aurora Prototype.slnx",
+    "dotnet.defaultSolution": "Pewter-Aurora-Prototyping.slnx",
     "dotnet.enableWorkspaceBasedDevelopment": false
 }
