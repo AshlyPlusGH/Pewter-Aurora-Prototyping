@@ -1,0 +1,19 @@
+{
+    "name": "AshesUnityInteractionPackage",
+    "rootNamespace": "Ash",
+    "references": [
+        "GUID:776d03a35f1b52c4a9aed9f56d7b4229",
+        "GUID:f88fb04354076c646a4107a491394033",
+        "GUID:df1dea26b8503004d92d621e88aa9421",
+        "GUID:2218e9acf4363e04493a4aa50e7d278e"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
