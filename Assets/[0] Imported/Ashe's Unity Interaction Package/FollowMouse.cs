@@ -10,9 +10,9 @@ namespace Ash
         void Update()
         {
             Vector3 targetPosition = Input.mousePosition;
-            targetPosition.z = zPos;
             if (transformArea == TransformArea.World){ targetPosition = Camera.main.ScreenToWorldPoint(Input.mousePosition); }
             if (!IsValid(targetPosition)){ return; }
+            targetPosition.z = zPos;
             gameObject.transform.position = targetPosition;
         }
 
