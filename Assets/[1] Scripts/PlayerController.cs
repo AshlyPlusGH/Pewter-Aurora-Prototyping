@@ -87,7 +87,7 @@ public class PlayerController : MonoBehaviour
     private bool _canJump = true;
     private float _jumpCooldownTimer;
 
-    private bool _canWallKick = true;
+    private bool _canWallKick = false;
     private float _wallKickCooldownTimer;
 
     private Vector2 _moveInput;
@@ -256,6 +256,9 @@ public class PlayerController : MonoBehaviour
             _rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
 
             _canJump = false;
+            // Seed the timer with a small buffer so TickCooldowns cannot restore
+            // _canJump before the physics step has separated the player from the ground.
+            _jumpCooldownTimer = 0.2f;
             _jumpPressed = false;
         }
         // If standard jump did not fire, leave _jumpPressed=true for HandleWallKick.

@@ -131,7 +131,7 @@ GameObject:
   - component: {fileID: 367343479}
   - component: {fileID: 367343478}
   - component: {fileID: 367343477}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Eye
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -472,7 +472,7 @@ GameObject:
   - component: {fileID: 783445230}
   - component: {fileID: 783445229}
   - component: {fileID: 783445228}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Body
   m_TagString: Untagged
   m_Icon: {fileID: 0}
