@@ -21,17 +21,23 @@ public class PlayerController : MonoBehaviour
     // ─── Movement ──────────────────────────────────────────────────────────────
 
     [Header("Movement")]
-    [Tooltip("Target horizontal speed in metres per second.")]
+    [Tooltip("Soft horizontal speed cap on the ground. Standard WASD will not push beyond this; " +
+             "external forces (wall kicks, explosions, etc.) can freely exceed it.")]
     public float moveSpeed = 7f;
 
-    [Tooltip("Force applied toward the target velocity each fixed frame.")]
-    public float acceleration = 60f;
+    [Tooltip("Constant acceleration applied in the input direction while grounded. " +
+             "Must exceed moveSpeed × groundDrag (" + "≈56 at defaults) for the cap to be the limiter " +
+             "rather than drag. Higher values reach the cap faster.")]
+    public float groundAcceleration = 80f;
 
     [Tooltip("Rigidbody drag when the player is grounded.")]
     public float groundDrag = 8f;
 
     [Tooltip("Rigidbody drag while airborne.")]
     public float airDrag = 0.5f;
+
+    [Tooltip("Force applied in the input direction while airborne.")]
+    public float acceleration = 60f;
 
     [Tooltip("Scales the additive steering force while airborne for input that aligns with or is " +
              "perpendicular to the current velocity. Does not affect the opposing braking factor.")]
@@ -299,9 +305,12 @@ public class PlayerController : MonoBehaviour
 
         if (_isGrounded)
         {
-            // On ground: full responsive error-correction toward target velocity.
-            Vector3 velocityError = targetDirection * moveSpeed - currentHorizontal;
-            _rb.AddForce(velocityError * acceleration, ForceMode.Acceleration);
+            // Additive force toward the input direction, capped at moveSpeed.
+            // Forces from outside this system (kicks, explosions) can freely exceed the cap —
+            // WASD simply won't add further speed in that direction until below it again.
+            float groundSpeedAlongInput = Vector3.Dot(currentHorizontal, targetDirection);
+            if (groundSpeedAlongInput < moveSpeed)
+                _rb.AddForce(targetDirection * groundAcceleration, ForceMode.Acceleration);
             return;
         }
 
