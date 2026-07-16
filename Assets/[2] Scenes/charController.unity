@@ -556,9 +556,10 @@ MonoBehaviour:
   visualRoot: {fileID: 0}
   cameraController: {fileID: 0}
   moveSpeed: 8
-  acceleration: 60
+  groundAcceleration: 80
   groundDrag: 8
   airDrag: 0.5
+  acceleration: 60
   airControlFactor: 0.4
   airOpposingFactor: 0.1
   bodyRotationSpeed: 12
@@ -570,6 +571,10 @@ MonoBehaviour:
   wallKickCooldown: 0.2
   gravityAccelRate: 1
   maxGravityMultiplier: 3
+  wallKickMultiplierBonus: 0.02
+  fallMultiplierRate: 0.02
+  speedMultiplierDecayRate: 0.01
+  maxSpeedMultiplier: 1.5
   groundCheckRadius: 0.25
   groundCheckOffset: 0.05
   groundLayer:

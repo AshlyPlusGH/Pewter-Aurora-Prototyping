@@ -87,6 +87,22 @@ public class PlayerController : MonoBehaviour
     [Tooltip("Maximum gravity multiplier the airborne ramp can reach.")]
     public float maxGravityMultiplier = 3f;
 
+    // ─── Speed Multiplier ──────────────────────────────────────────────────────
+
+    [Header("Speed Multiplier")]
+    [Tooltip("Bonus added to the speed multiplier each time a wall kick is performed.")]
+    public float wallKickMultiplierBonus = 0.02f;
+
+    [Tooltip("Rate at which the speed multiplier grows per second while the player is actively falling " +
+             "(airborne with downward velocity).")]
+    public float fallMultiplierRate = 0.02f;
+
+    [Tooltip("Rate at which the speed multiplier decays back toward 1× per second, always active.")]
+    public float speedMultiplierDecayRate = 0.01f;
+
+    [Tooltip("Upper bound for the speed multiplier. Cannot go below 1×.")]
+    public float maxSpeedMultiplier = 1.5f;
+
     // ─── Ground Detection ──────────────────────────────────────────────────────
 
     [Header("Ground Detection")]
@@ -98,6 +114,15 @@ public class PlayerController : MonoBehaviour
 
     [Tooltip("Layers considered as ground or wall surfaces. Defaults to Everything if not set.")]
     public LayerMask groundLayer = ~0;
+
+    // ─── Debug (read-only) ─────────────────────────────────────────────────────
+
+    [Header("Debug (read-only)")]
+    [SerializeField, Tooltip("Current horizontal speed in metres per second.")]
+    private float _debugSpeed;
+
+    [SerializeField, Tooltip("Current universal speed multiplier.")]
+    private float _debugSpeedMultiplier;
 
     // ─── Private State ─────────────────────────────────────────────────────────
 
@@ -114,6 +139,7 @@ public class PlayerController : MonoBehaviour
     private float _wallKickCooldownTimer;
 
     private float _gravityMultiplier = 1f;
+    private float _speedMultiplier   = 1f;
 
     /// <summary>
     /// True from the moment of a wall kick until the player lands.
@@ -192,10 +218,14 @@ public class PlayerController : MonoBehaviour
         HandleLanding();
         ApplyDrag();
         ApplyGravity();
+        TickSpeedMultiplier();
         ApplyMovement();
         HandleJump();
         HandleWallKick();
         RotateVisualRoot();
+
+        _debugSpeed           = new Vector3(_rb.linearVelocity.x, 0f, _rb.linearVelocity.z).magnitude;
+        _debugSpeedMultiplier = _speedMultiplier;
     }
 
     // ─── Input ─────────────────────────────────────────────────────────────────
@@ -289,6 +319,28 @@ public class PlayerController : MonoBehaviour
         _gravityMultiplier = 1f;
     }
 
+    // ─── Speed Multiplier ──────────────────────────────────────────────────────
+
+    private void TickSpeedMultiplier()
+    {
+        // Decay toward 1× continuously.
+        if (_speedMultiplier > 1f)
+            _speedMultiplier = Mathf.Max(1f, _speedMultiplier - speedMultiplierDecayRate * Time.fixedDeltaTime);
+
+        // Grow while actively falling (airborne and moving downward).
+        if (!_isGrounded && _rb.linearVelocity.y < 0f)
+            _speedMultiplier = Mathf.Min(_speedMultiplier + fallMultiplierRate * Time.fixedDeltaTime, maxSpeedMultiplier);
+    }
+
+    /// <summary>
+    /// Adds a bonus to the universal speed multiplier, clamped to maxSpeedMultiplier.
+    /// Call from any non-standard movement action — wall kick, jetpack boost, etc.
+    /// </summary>
+    public void AddToSpeedMultiplier(float bonus)
+    {
+        _speedMultiplier = Mathf.Min(_speedMultiplier + bonus, maxSpeedMultiplier);
+    }
+
     // ─── Movement ──────────────────────────────────────────────────────────────
 
     private void ApplyMovement()
@@ -305,12 +357,14 @@ public class PlayerController : MonoBehaviour
 
         if (_isGrounded)
         {
-            // Additive force toward the input direction, capped at moveSpeed.
+            // Additive force toward the input direction, capped at the effective move speed.
             // Forces from outside this system (kicks, explosions) can freely exceed the cap —
             // WASD simply won't add further speed in that direction until below it again.
+            float effectiveMoveSpeed  = moveSpeed * _speedMultiplier;
+            float effectiveGroundAccel = groundAcceleration * _speedMultiplier;
             float groundSpeedAlongInput = Vector3.Dot(currentHorizontal, targetDirection);
-            if (groundSpeedAlongInput < moveSpeed)
-                _rb.AddForce(targetDirection * groundAcceleration, ForceMode.Acceleration);
+            if (groundSpeedAlongInput < effectiveMoveSpeed)
+                _rb.AddForce(targetDirection * effectiveGroundAccel, ForceMode.Acceleration);
             return;
         }
 
@@ -338,10 +392,11 @@ public class PlayerController : MonoBehaviour
         if (_wallKickActive && Vector3.Dot(targetDirection, -_wallKickNormal) > 0f)
             controlScale = 0f;
 
-        // Do not add speed beyond moveSpeed in the input direction.
+        // Do not add speed beyond the effective cap in the input direction.
         // This caps steering/additive acceleration without damping launch momentum.
+        float airEffectiveMoveSpeed = moveSpeed * _speedMultiplier;
         float speedAlongInput = Vector3.Dot(currentHorizontal, targetDirection);
-        if (speedAlongInput >= moveSpeed)
+        if (speedAlongInput >= airEffectiveMoveSpeed)
             return;
 
         _rb.AddForce(targetDirection * acceleration * controlScale, ForceMode.Acceleration);
@@ -358,7 +413,7 @@ public class PlayerController : MonoBehaviour
         {
             // Zero downward velocity for a consistent jump height.
             _rb.linearVelocity = new Vector3(_rb.linearVelocity.x, 0f, _rb.linearVelocity.z);
-            _rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+            _rb.AddForce(Vector3.up * jumpForce * _speedMultiplier, ForceMode.Impulse);
 
             _canJump = false;
             _jumpCooldownTimer = 0.2f;
@@ -393,7 +448,7 @@ public class PlayerController : MonoBehaviour
         vel.y             = 0f;
         _rb.linearVelocity = vel;
 
-        Vector3 kickForce = wallNormal * wallKickLateralForce + Vector3.up * wallKickUpForce;
+        Vector3 kickForce = (wallNormal * wallKickLateralForce + Vector3.up * wallKickUpForce) * _speedMultiplier;
         _rb.AddForce(kickForce, ForceMode.Impulse);
 
         _canWallKick          = false;
@@ -403,6 +458,7 @@ public class PlayerController : MonoBehaviour
         _wallKickActive = true;
         _wallKickNormal = wallNormal;
 
+        AddToSpeedMultiplier(wallKickMultiplierBonus);
         ResetGravityRamp();
     }
 
