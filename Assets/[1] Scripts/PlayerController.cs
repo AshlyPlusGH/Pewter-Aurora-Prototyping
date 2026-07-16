@@ -392,14 +392,22 @@ public class PlayerController : MonoBehaviour
         if (_wallKickActive && Vector3.Dot(targetDirection, -_wallKickNormal) > 0f)
             controlScale = 0f;
 
-        // Do not add speed beyond the effective cap in the input direction.
-        // This caps steering/additive acceleration without damping launch momentum.
-        float airEffectiveMoveSpeed = moveSpeed * _speedMultiplier;
-        float speedAlongInput = Vector3.Dot(currentHorizontal, targetDirection);
-        if (speedAlongInput >= airEffectiveMoveSpeed)
-            return;
+        Vector3 airForce = targetDirection * acceleration * controlScale;
 
-        _rb.AddForce(targetDirection * acceleration * controlScale, ForceMode.Acceleration);
+        // If already at or above the speed cap, strip out any component of the force that
+        // would increase total horizontal speed, leaving only the turning component.
+        // This lets the player steer freely without self-boosting beyond the cap.
+        float totalHorizontalSpeed  = currentHorizontal.magnitude;
+        float airEffectiveMoveSpeed = moveSpeed * _speedMultiplier;
+        if (totalHorizontalSpeed >= airEffectiveMoveSpeed && totalHorizontalSpeed > 0.01f)
+        {
+            Vector3 currentDir       = currentHorizontal.normalized;
+            float   acceleratingPart = Vector3.Dot(airForce, currentDir);
+            if (acceleratingPart > 0f)
+                airForce -= currentDir * acceleratingPart;
+        }
+
+        _rb.AddForce(airForce, ForceMode.Acceleration);
     }
 
     // ─── Jump ──────────────────────────────────────────────────────────────────
