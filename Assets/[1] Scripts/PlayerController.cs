@@ -33,9 +33,16 @@ public class PlayerController : MonoBehaviour
     [Tooltip("Rigidbody drag while airborne.")]
     public float airDrag = 0.5f;
 
-    [Tooltip("Scales input force while airborne. 0 = no air steering, 1 = full control.")]
+    [Tooltip("Scales the additive steering force while airborne for input that aligns with or is " +
+             "perpendicular to the current velocity. Does not affect the opposing braking factor.")]
     [Range(0f, 1f)]
     public float airControlFactor = 0.4f;
+
+    [Tooltip("Fraction of airControlFactor applied when input directly opposes current horizontal velocity. " +
+             "0 = cannot reverse momentum at all, 1 = same as aligned steering. " +
+             "Interpolates continuously — perpendicular input is always at full airControlFactor.")]
+    [Range(0f, 1f)]
+    public float airOpposingFactor = 0.1f;
 
     [Tooltip("Speed at which the visual root slerps to face the camera forward direction.")]
     public float bodyRotationSpeed = 12f;
@@ -44,10 +51,10 @@ public class PlayerController : MonoBehaviour
 
     [Header("Jump")]
     [Tooltip("Upward impulse strength applied when jumping.")]
-    public float jumpForce = 6f;
+    public float jumpForce = 10f;
 
     [Tooltip("Seconds after landing before the player may jump again.")]
-    public float jumpCooldown = 1f;
+    public float jumpCooldown = 0.15f;
 
     // ─── Wall Kick ─────────────────────────────────────────────────────────────
 
@@ -63,6 +70,16 @@ public class PlayerController : MonoBehaviour
 
     [Tooltip("Seconds the wall kick ability is locked out after use (resets fully on landing).")]
     public float wallKickCooldown = 0.2f;
+
+    // ─── Gravity ───────────────────────────────────────────────────────────────
+
+    [Header("Gravity")]
+    [Tooltip("How quickly the gravity multiplier increases per second while airborne. " +
+             "Resets to 1 on landing, jumping, wall kicking, or any call to ResetGravityRamp().")]
+    public float gravityAccelRate = 0.4f;
+
+    [Tooltip("Maximum gravity multiplier the airborne ramp can reach.")]
+    public float maxGravityMultiplier = 3f;
 
     // ─── Ground Detection ──────────────────────────────────────────────────────
 
@@ -89,6 +106,16 @@ public class PlayerController : MonoBehaviour
 
     private bool _canWallKick = false;
     private float _wallKickCooldownTimer;
+
+    private float _gravityMultiplier = 1f;
+
+    /// <summary>
+    /// True from the moment of a wall kick until the player lands.
+    /// While active, movement force toward the kicked wall's normal is suppressed,
+    /// preventing the player from steering back into the surface mid-air.
+    /// </summary>
+    private bool _wallKickActive;
+    private Vector3 _wallKickNormal;
 
     private Vector2 _moveInput;
     private bool _jumpPressed;
@@ -134,6 +161,17 @@ public class PlayerController : MonoBehaviour
         _rb.freezeRotation = true;
         _rb.interpolation = RigidbodyInterpolation.Interpolate;
         _rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+        _rb.useGravity = false; // Gravity is applied manually to support the airborne ramp-up.
+
+        // Assign a zero-friction physics material so the player doesn't slow-slide
+        // along walls due to collider friction. Ground deceleration is handled by linearDamping.
+        PhysicsMaterial frictionlessMat = new PhysicsMaterial("Player_Frictionless")
+        {
+            dynamicFriction = 0f,
+            staticFriction  = 0f,
+            frictionCombine = PhysicsMaterialCombine.Minimum,
+        };
+        _col.material = frictionlessMat;
     }
 
     private void Update()
@@ -147,6 +185,7 @@ public class PlayerController : MonoBehaviour
         CheckGround();
         HandleLanding();
         ApplyDrag();
+        ApplyGravity();
         ApplyMovement();
         HandleJump();
         HandleWallKick();
@@ -210,6 +249,11 @@ public class PlayerController : MonoBehaviour
             // Reset wall kick on landing.
             _canWallKick = true;
             _wallKickCooldownTimer = 0f;
+
+            // Clear the post-kick movement suppression.
+            _wallKickActive = false;
+
+            ResetGravityRamp();
         }
     }
 
@@ -218,6 +262,25 @@ public class PlayerController : MonoBehaviour
     private void ApplyDrag()
     {
         _rb.linearDamping = _isGrounded ? groundDrag : airDrag;
+    }
+
+    // ─── Gravity ───────────────────────────────────────────────────────────────
+
+    private void ApplyGravity()
+    {
+        if (!_isGrounded)
+            _gravityMultiplier = Mathf.Min(_gravityMultiplier + gravityAccelRate * Time.fixedDeltaTime, maxGravityMultiplier);
+
+        _rb.AddForce(Physics.gravity * _gravityMultiplier, ForceMode.Acceleration);
+    }
+
+    /// <summary>
+    /// Resets the airborne gravity ramp back to 1×. Call this from any action that
+    /// imparts upward or sustained mid-air momentum — jumps, wall kicks, jetpack boosts, etc.
+    /// </summary>
+    public void ResetGravityRamp()
+    {
+        _gravityMultiplier = 1f;
     }
 
     // ─── Movement ──────────────────────────────────────────────────────────────
@@ -231,15 +294,48 @@ public class PlayerController : MonoBehaviour
         Vector3 camForward = cameraController.HorizontalForward;
         Vector3 camRight   = cameraController.HorizontalRight;
 
-        Vector3 targetDirection = (camForward * _moveInput.y + camRight * _moveInput.x).normalized;
-        Vector3 targetVelocity  = targetDirection * moveSpeed;
-
-        // Operate only on horizontal velocity — do not fight gravity.
+        Vector3 targetDirection   = (camForward * _moveInput.y + camRight * _moveInput.x).normalized;
         Vector3 currentHorizontal = new Vector3(_rb.linearVelocity.x, 0f, _rb.linearVelocity.z);
-        Vector3 velocityError     = targetVelocity - currentHorizontal;
 
-        float controlScale = _isGrounded ? 1f : airControlFactor;
-        _rb.AddForce(velocityError * acceleration * controlScale, ForceMode.Acceleration);
+        if (_isGrounded)
+        {
+            // On ground: full responsive error-correction toward target velocity.
+            Vector3 velocityError = targetDirection * moveSpeed - currentHorizontal;
+            _rb.AddForce(velocityError * acceleration, ForceMode.Acceleration);
+            return;
+        }
+
+        // ── Airborne: momentum-preserving additive steering ─────────────────────
+        // Applies a force in the input direction rather than correcting toward a target
+        // velocity, so existing momentum (wall kicks, explosions, etc.) is not aggressively
+        // counteracted. The scale is reduced when input opposes current velocity.
+
+        float controlScale = airControlFactor;
+
+        float currentSpeed = currentHorizontal.magnitude;
+        if (currentSpeed > 0.1f)
+        {
+            float dot = Vector3.Dot(targetDirection, currentHorizontal.normalized);
+            if (dot < 0f)
+            {
+                // Remap dot from [-1, 0] → scale from (airControlFactor * airOpposingFactor) to airControlFactor.
+                // Fully opposing = minimum scale; perpendicular = full airControlFactor.
+                float t = 1f + dot; // 0 at dot = -1, 1 at dot = 0
+                controlScale = Mathf.Lerp(airControlFactor * airOpposingFactor, airControlFactor, t);
+            }
+        }
+
+        // Hard-suppress any force back toward the kicked wall while airborne.
+        if (_wallKickActive && Vector3.Dot(targetDirection, -_wallKickNormal) > 0f)
+            controlScale = 0f;
+
+        // Do not add speed beyond moveSpeed in the input direction.
+        // This caps steering/additive acceleration without damping launch momentum.
+        float speedAlongInput = Vector3.Dot(currentHorizontal, targetDirection);
+        if (speedAlongInput >= moveSpeed)
+            return;
+
+        _rb.AddForce(targetDirection * acceleration * controlScale, ForceMode.Acceleration);
     }
 
     // ─── Jump ──────────────────────────────────────────────────────────────────
@@ -256,10 +352,10 @@ public class PlayerController : MonoBehaviour
             _rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
 
             _canJump = false;
-            // Seed the timer with a small buffer so TickCooldowns cannot restore
-            // _canJump before the physics step has separated the player from the ground.
             _jumpCooldownTimer = 0.2f;
             _jumpPressed = false;
+
+            ResetGravityRamp();
         }
         // If standard jump did not fire, leave _jumpPressed=true for HandleWallKick.
     }
@@ -280,13 +376,25 @@ public class PlayerController : MonoBehaviour
             return;
 
         // Zero vertical momentum for a consistent kick height.
-        _rb.linearVelocity = new Vector3(_rb.linearVelocity.x, 0f, _rb.linearVelocity.z);
+        // Also strip any velocity component going into the wall so the kick
+        // is never fighting the player's current approach momentum.
+        Vector3 vel       = _rb.linearVelocity;
+        float   intoWall  = Mathf.Min(0f, Vector3.Dot(vel, wallNormal)); // negative = moving into wall
+        vel              -= wallNormal * intoWall;                        // remove that component
+        vel.y             = 0f;
+        _rb.linearVelocity = vel;
 
         Vector3 kickForce = wallNormal * wallKickLateralForce + Vector3.up * wallKickUpForce;
         _rb.AddForce(kickForce, ForceMode.Impulse);
 
-        _canWallKick = false;
+        _canWallKick          = false;
         _wallKickCooldownTimer = wallKickCooldown;
+
+        // Block movement back toward this wall for the entire remaining airborne duration.
+        _wallKickActive = true;
+        _wallKickNormal = wallNormal;
+
+        ResetGravityRamp();
     }
 
     /// <summary>
@@ -339,7 +447,7 @@ public class PlayerController : MonoBehaviour
     // ─── Gizmos ────────────────────────────────────────────────────────────────
 
 #if UNITY_EDITOR
-    private void OnDrawGizmosSelected()
+    private void OnDrawGizmos()
     {
         CapsuleCollider col = GetComponent<CapsuleCollider>() ?? GetComponentInChildren<CapsuleCollider>();
         if (col == null)
