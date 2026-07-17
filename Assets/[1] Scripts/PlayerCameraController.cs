@@ -50,6 +50,12 @@ public class PlayerCameraController : MonoBehaviour
     /// <summary>Camera right projected onto the XZ plane and normalised.</summary>
     public Vector3 HorizontalRight { get; private set; } = Vector3.right;
 
+    /// <summary>Current horizontal orbit angle in degrees.</summary>
+    public float Yaw => _yaw;
+
+    /// <summary>Current vertical orbit angle in degrees.</summary>
+    public float Pitch => _pitch;
+
     // ─── Unity Lifecycle ───────────────────────────────────────────────────────
 
     private void Awake()
