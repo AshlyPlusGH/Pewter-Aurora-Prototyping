@@ -77,6 +77,12 @@ public class PlayerController : MonoBehaviour
     [Tooltip("Seconds the wall kick ability is locked out after use (resets fully on landing).")]
     public float wallKickCooldown = 0.2f;
 
+    [Tooltip("How much the camera look direction steers the kick. " +
+             "0 = always perpendicular to the wall; 1 = purely in the camera direction. " +
+             "The camera component is projected so it can never send the player back into the wall.")]
+    [Range(0f, 1f)]
+    public float wallKickDirectionBlend = 0.6f;
+
     // ─── Gravity ───────────────────────────────────────────────────────────────
 
     [Header("Gravity")]
@@ -444,7 +450,7 @@ public class PlayerController : MonoBehaviour
         if (_isGrounded || !_canWallKick)
             return;
 
-        if (!TryDetectWall(out Vector3 wallNormal))
+        if (!TryDetectWall(out Vector3 wallNormal, out DroneEnemy hitDrone))
             return;
 
         // Zero vertical momentum for a consistent kick height.
@@ -456,7 +462,7 @@ public class PlayerController : MonoBehaviour
         vel.y             = 0f;
         _rb.linearVelocity = vel;
 
-        Vector3 kickForce = (wallNormal * wallKickLateralForce + Vector3.up * wallKickUpForce) * _speedMultiplier;
+        Vector3 kickForce = (ComputeKickLateralDir(wallNormal) * wallKickLateralForce + Vector3.up * wallKickUpForce) * _speedMultiplier;
         _rb.AddForce(kickForce, ForceMode.Impulse);
 
         _canWallKick          = false;
@@ -468,15 +474,43 @@ public class PlayerController : MonoBehaviour
 
         AddToSpeedMultiplier(wallKickMultiplierBonus);
         ResetGravityRamp();
+
+        // If the kick surface was a drone, send it flying and stun it.
+        hitDrone?.ReceiveKick(-wallNormal);
+    }
+
+    /// <summary>
+    /// Returns the lateral kick direction as a blend of the raw wall normal and the
+    /// camera's horizontal forward. The camera component is projected onto the wall's
+    /// "away" hemisphere first, so the result can never send the player back into the wall.
+    /// </summary>
+    private Vector3 ComputeKickLateralDir(Vector3 wallNormal)
+    {
+        if (cameraController == null || wallKickDirectionBlend <= 0f)
+            return wallNormal;
+
+        Vector3 camForward = cameraController.HorizontalForward;
+
+        // Clip the into-wall component so the camera direction always has
+        // at least a neutral (tangential) relationship with the wall.
+        float intoWall = Mathf.Min(0f, Vector3.Dot(camForward, wallNormal));
+        Vector3 clipped = (camForward - wallNormal * intoWall);
+
+        if (clipped.sqrMagnitude < 0.001f)
+            return wallNormal;  // camera aimed directly into wall — pure normal fallback
+
+        return Vector3.Lerp(wallNormal, clipped.normalized, wallKickDirectionBlend).normalized;
     }
 
     /// <summary>
     /// Fans a sphere cast in four cardinal directions at hip height.
     /// Returns true and the averaged wall normal if a wall is found within range.
+    /// Also outputs the first DroneEnemy found among the hits, if any.
     /// </summary>
-    private bool TryDetectWall(out Vector3 wallNormal)
+    private bool TryDetectWall(out Vector3 wallNormal, out DroneEnemy hitDrone)
     {
         wallNormal = Vector3.zero;
+        hitDrone   = null;
         int hitCount = 0;
 
         float hipHeight   = _col.height * 0.25f;
@@ -489,6 +523,10 @@ public class PlayerController : MonoBehaviour
             {
                 wallNormal += hit.normal;
                 hitCount++;
+
+                // Capture the first DroneEnemy found among all hits
+                if (hitDrone == null)
+                    hitDrone = hit.collider.GetComponentInParent<DroneEnemy>();
             }
         }
 

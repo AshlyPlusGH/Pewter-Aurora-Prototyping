@@ -480,6 +480,197 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
+--- !u!1 &501033308
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 501033312}
+  - component: {fileID: 501033311}
+  - component: {fileID: 501033310}
+  - component: {fileID: 501033309}
+  - component: {fileID: 501033313}
+  - component: {fileID: 501033314}
+  m_Layer: 0
+  m_Name: DroneEnemy
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!23 &501033309
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 501033308}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 1
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!135 &501033310
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 501033308}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Radius: 0.5
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!33 &501033311
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 501033308}
+  m_Mesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!4 &501033312
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 501033308}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 5, y: 2.5, z: 5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &501033313
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 501033308}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6ff266349ae9b274e8bc55f38d473357, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DroneEnemy
+  playerTarget: {fileID: 0}
+  detectionRange: 22
+  sightBlockingLayers:
+    serializedVersion: 2
+    m_Bits: 1
+  moveSpeed: 5
+  moveAcceleration: 25
+  rotationSpeed: 6
+  arrivalThreshold: 0.6
+  minGroundClearance: 1.5
+  heightVariationAmplitude: 1.2
+  heightVariationSpeed: 0.22
+  surfaceAvoidanceRange: 2.5
+  surfaceAvoidanceStrength: 9
+  wanderRadius: 10
+  wanderDwellTime: 2.5
+  strafeRadius: 6
+  strafeAngularSpeed: 50
+  strafeHoverOffset: 1.8
+  strafeDirectionInterval: 2.5
+  shootDuration: 0.9
+  shootInterval: 5
+  kamikazeProbabilityPerSecond: 0.12
+  kamikazeCooldown: 10
+  telegraphDuration: 1.5
+  telegraphFlashRate: 6
+  kamikazeMaxSpeed: 18
+  kamikazeAcceleration: 14
+  kamikazeTurnRateMax: 160
+  kamikazeTurnRateMin: 18
+  kamikazeDuration: 4
+  kickForce: 10
+  stunDuration: 2.5
+  normalColor: {r: 1, g: 1, b: 1, a: 1}
+  kamikazeColor: {r: 1, g: 0, b: 0, a: 1}
+  stunColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  _debugState: 0
+  _debugHasLos: 0
+--- !u!54 &501033314
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 501033308}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 1
+  m_AngularDamping: 10
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 0
+  m_IsKinematic: 0
+  m_Interpolate: 1
+  m_Constraints: 112
+  m_CollisionDetection: 1
 --- !u!1 &745906571
 GameObject:
   m_ObjectHideFlags: 0
@@ -570,6 +761,7 @@ MonoBehaviour:
   wallKickUpForce: 10
   wallCheckDistance: 0.65
   wallKickCooldown: 0.2
+  wallKickDirectionBlend: 0.6
   gravityAccelRate: 1
   maxGravityMultiplier: 3
   wallKickMultiplierBonus: 0.02
@@ -930,7 +1122,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 03ec4fefa496bdd418bf727b76774473, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CameraOcclusionFade
-  enableFade: 0
+  enableFade: 1
   occlusionAlpha: 0.3
   occlusionLayers:
     serializedVersion: 2
@@ -2449,3 +2641,4 @@ SceneRoots:
   - {fileID: 745906572}
   - {fileID: 1356881214}
   - {fileID: 1219050072}
+  - {fileID: 501033312}
