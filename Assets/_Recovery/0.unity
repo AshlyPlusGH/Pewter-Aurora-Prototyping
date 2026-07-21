@@ -1091,8 +1091,6 @@ MonoBehaviour:
   maxPitch: 70
   heightOffset: 1
   cameraDistance: 5
-  inertiaSmoothing: 0.25
-  movementInertia: 0.15
 --- !u!114 &1356881216
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1108,7 +1106,7 @@ MonoBehaviour:
   enablePull: 0
   collisionMargin: 0.3
   castRadius: 0.15
-  smoothSpeed: 35
+  smoothSpeed: 15
   occlusionLayers:
     serializedVersion: 2
     m_Bits: 1
